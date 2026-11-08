@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Network devices</title>
+<style>
+  :root{
+    --ink:#0E1416; --panel:#141B1E; --panel-raised:#1A2225;
+    --line:#26312F; --line-strong:#3A4744;
+    --foam:#E7F0ED; --foam-dim:#93A8A3; --foam-faint:#5E706B;
+    --moss:#59B694; --moss-dim:#2E4A40;
+    --clay:#C2705A; --clay-dim:#4A2E26;
+    --amber:#D9A441; --amber-dim:#4A3B1E;
+    --radius:10px;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --mono:"SFMono-Regular","Cascadia Code","Consolas","Liberation Mono",monospace;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--ink);color:var(--foam);font-family:var(--sans);padding:32px 20px 60px;min-height:100vh;}
+  .wrap{max-width:920px;margin:0 auto;}
+
+  header.top{display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:16px;margin-bottom:20px;}
+  .net-name{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--moss);font-weight:600;margin:0 0 6px;display:flex;align-items:center;gap:8px;}
+  h1{font-size:26px;font-weight:600;margin:0;letter-spacing:-.01em;}
+  .scan-info{font-size:12.5px;color:var(--foam-faint);font-family:var(--mono);text-align:right;}
+  .scan-info span{color:var(--moss);}
+
+  .mode-banner{
+    display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
+    background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+    padding:11px 14px;margin-bottom:20px;font-size:13px;color:var(--foam-dim);
+  }
+  .mode-banner.live{border-color:var(--moss-dim);}
+  .mode-banner.error{border-color:var(--clay-dim);}
+  .mode-banner .dot{width:8px;height:8px;border-radius:50%;background:var(--foam-faint);display:inline-block;margin-right:8px;}
+  .mode-banner.live .dot{background:var(--moss);}
+  .mode-banner.error .dot{background:var(--clay);}
+  .mode-banner button{
+    background:none;border:1px solid var(--line-strong);color:var(--foam);
+    font-size:12.5px;padding:6px 12px;border-radius:8px;cursor:pointer;font-family:var(--sans);
+    display:flex;align-items:center;gap:6px;white-space:nowrap;
+  }
+  .mode-banner button:hover{background:var(--panel-raised);}
+  .mode-banner button svg{width:13px;height:13px;}
+  .mode-banner button.spinning svg{animation:spin 0.8s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:22px;}
+  .stat{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px;}
+  .stat .num{font-size:22px;font-weight:600;font-family:var(--mono);}
+  .stat .lbl{font-size:12px;color:var(--foam-dim);margin-top:4px;}
+  .stat.online .num{color:var(--moss);}
+  .stat.flagged .num{color:var(--clay);}
+
+  .toolbar{display:flex;gap:10px;align-items:center;margin-bottom:18px;flex-wrap:wrap;}
+  .search{position:relative;flex:1;min-width:200px;}
+  .search input{width:100%;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);color:var(--foam);font-family:var(--sans);font-size:14px;padding:10px 12px 10px 34px;}
+  .search input:focus{outline:none;border-color:var(--line-strong);}
+  .search input::placeholder{color:var(--foam-faint);}
+  .search svg{position:absolute;left:11px;top:50%;transform:translateY(-50%);width:15px;height:15px;stroke:var(--foam-faint);}
+  .chip-group{display:flex;gap:6px;}
+  .chip{background:var(--panel);border:1px solid var(--line);color:var(--foam-dim);font-size:13px;padding:9px 14px;border-radius:var(--radius);cursor:pointer;font-family:var(--sans);white-space:nowrap;}
+  .chip:hover{border-color:var(--line-strong);}
+  .chip.active{background:var(--moss-dim);border-color:var(--moss);color:var(--moss);}
+
+  .list-head{display:grid;grid-template-columns:26px 1.6fr 1.3fr 1fr 1.1fr 30px;gap:14px;padding:0 16px 8px;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--foam-faint);}
+  .list-head .sortable{cursor:pointer;user-select:none;}
+  .list-head .sortable:hover{color:var(--foam-dim);}
+
+  .device-list{border-top:1px solid var(--line);}
+  .row{display:grid;grid-template-columns:26px 1.6fr 1.3fr 1fr 1.1fr 30px;gap:14px;align-items:center;padding:13px 16px;border-bottom:1px solid var(--line);transition:background .12s;}
+  .row:hover{background:var(--panel);}
+
+  .dot{width:9px;height:9px;border-radius:50%;background:var(--foam-faint);justify-self:center;}
+  .dot.on{background:var(--moss);box-shadow:0 0 0 3px var(--moss-dim);}
+  .dot.off{background:var(--foam-faint);}
+
+  .who{display:flex;flex-direction:column;gap:2px;min-width:0;}
+  .who .name{font-size:14.5px;font-weight:500;display:flex;align-items:center;flex-wrap:wrap;gap:4px 7px;}
+  .who .name .type-icon{color:var(--foam-faint);flex:none;}
+  .who .hostid{font-family:var(--mono);font-size:12px;color:var(--foam-faint);}
+  .badge-new{font-size:10px;font-weight:600;letter-spacing:.03em;background:var(--moss-dim);color:var(--moss);padding:2px 6px;border-radius:5px;text-transform:uppercase;}
+  .badge-flag{font-size:10px;font-weight:600;letter-spacing:.03em;background:var(--clay-dim);color:var(--clay);padding:2px 6px;border-radius:5px;text-transform:uppercase;}
+  .badge-you{font-size:10px;font-weight:600;letter-spacing:.03em;background:var(--amber-dim);color:var(--amber);padding:2px 6px;border-radius:5px;text-transform:uppercase;}
+
+  .mono-field{font-family:var(--mono);font-size:13px;color:var(--foam-dim);}
+  .mono-field.dim{color:var(--foam-faint);}
+
+  .signal{display:flex;align-items:flex-end;gap:2px;height:14px;}
+  .signal i{display:block;width:3px;border-radius:1px;background:var(--line-strong);}
+  .signal i:nth-child(1){height:5px;} .signal i:nth-child(2){height:8px;}
+  .signal i:nth-child(3){height:11px;} .signal i:nth-child(4){height:14px;}
+  .signal.s1 i:nth-child(1){background:var(--moss);}
+  .signal.s2 i:nth-child(-n+2){background:var(--moss);}
+  .signal.s3 i:nth-child(-n+3){background:var(--moss);}
+  .signal.s4 i{background:var(--moss);}
+
+  .copy-btn{background:none;border:1px solid var(--line);color:var(--foam-faint);width:28px;height:28px;border-radius:7px;cursor:pointer;display:flex;align-items:center;justify-content:center;justify-self:end;}
+  .copy-btn:hover{border-color:var(--line-strong);color:var(--foam);}
+  .copy-btn svg{width:13px;height:13px;}
+  .copy-btn.copied{border-color:var(--moss);color:var(--moss);}
+
+  .empty{text-align:center;padding:50px 20px;color:var(--foam-faint);font-size:14px;}
+
+  .footnote{margin-top:22px;font-size:12px;color:var(--foam-faint);line-height:1.6;border-top:1px solid var(--line);padding-top:14px;}
+  .footnote code{font-family:var(--mono);background:var(--panel);padding:1px 5px;border-radius:4px;}
+
+  @media (max-width:640px){
+    .list-head{display:none;}
+    .row{grid-template-columns:1fr;gap:6px;position:relative;padding:14px 16px 14px 34px;}
+    .dot{position:absolute;left:14px;top:18px;}
+    .mono-field{font-size:12px;}
+    .copy-btn{position:absolute;top:14px;right:14px;}
+    .stats{grid-template-columns:repeat(2,1fr);}
+  }
+  .status-text{font-size:12.5px;color:var(--foam-dim);display:flex;align-items:center;gap:6px;}
+  .status-text.off{color:var(--foam-faint);}
+  .badge-gw{font-size:10px;font-weight:600;letter-spacing:.03em;background:#1F2C3A;color:#7DA6CC;padding:2px 6px;border-radius:5px;text-transform:uppercase;}
+  .badge-priv{font-size:10px;font-weight:600;letter-spacing:.03em;background:var(--panel-raised);color:var(--foam-dim);padding:2px 6px;border-radius:5px;text-transform:uppercase;cursor:help;}
+  .spinner{width:14px;height:14px;border:2px solid var(--line-strong);border-top-color:var(--moss);border-radius:50%;animation:spin .8s linear infinite;display:inline-block;vertical-align:-2px;margin-right:8px;}
+  .mode-banner button:disabled{opacity:.5;cursor:default;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div>
+      <p class="net-name" id="netName">Network devices</p>
+      <h1>Connected devices</h1>
+    </div>
+    <div class="scan-info">last scanned <span id="scanTime">—</span></div>
+  </header>
+
+  <div class="mode-banner" id="modeBanner">
+    <span><span class="dot"></span><span id="modeText">Connecting to local scanner…</span></span>
+    <span style="display:flex;gap:8px;">
+      <button id="diagBtn" title="Show what the scanner is actually doing, step by step">Diagnostics</button>
+      <button id="copyDebugBtn" title="Copy the full debug report (also saved as debug_report.txt)">Copy report</button>
+      <button id="rescanBtn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/></svg>
+        Scan now
+      </button>
+    </span>
+  </div>
+
+  <div id="diagPanel" style="display:none;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:12px 14px;margin-bottom:20px;font-family:var(--mono);font-size:12px;color:var(--foam-dim);line-height:1.7;white-space:pre-wrap;"></div>
+
+  <div class="stats">
+    <div class="stat"><div class="num" id="statTotal">0</div><div class="lbl">Total devices</div></div>
+    <div class="stat online"><div class="num" id="statOnline">0</div><div class="lbl">Online now</div></div>
+    <div class="stat"><div class="num" id="statNew">0</div><div class="lbl">New today</div></div>
+    <div class="stat flagged"><div class="num" id="statFlagged">0</div><div class="lbl">Unrecognized</div></div>
+  </div>
+
+  <div class="toolbar">
+    <div class="search">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+      <input id="searchInput" type="text" placeholder="Search by name, MAC, IP, or host ID">
+    </div>
+    <div class="chip-group" id="filterChips">
+      <div class="chip active" data-filter="all">All</div>
+      <div class="chip" data-filter="online">Online</div>
+      <div class="chip" data-filter="offline">Offline</div>
+      <div class="chip" data-filter="flagged">Unrecognized</div>
+    </div>
+  </div>
+
+  <div class="list-head">
+    <div></div>
+    <div class="sortable" data-sort="name">Device / host ID</div>
+    <div class="sortable" data-sort="mac">MAC address</div>
+    <div class="sortable" data-sort="ip">IP address</div>
+    <div>Status</div>
+    <div></div>
+  </div>
+
+  <div class="device-list" id="deviceList"></div>
+  <div class="empty" id="emptyState" style="display:none;">No devices to show.</div>
+
+  <p class="footnote">
+    <span id="footnoteText">Trying to reach the local scanner at <code>http://localhost:8765</code>…</span>
+  </p>
+
+</div>
+
+<script>
+const ICONS = {
+  phone: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="2" width="10" height="20" rx="2"/><line x1="11" y1="18" x2="13" y2="18"/></svg>',
+  laptop: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="12" rx="1"/><path d="M2 20h20"/></svg>',
+  tv: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="14" rx="1"/><path d="M9 21h6M12 18v3"/></svg>',
+  speaker: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2" width="12" height="20" rx="2"/><circle cx="12" cy="14" r="3"/><circle cx="12" cy="7" r="1"/></svg>',
+  console: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="10" rx="4"/><circle cx="7" cy="12" r="1"/><circle cx="17" cy="12" r="1"/></svg>',
+  router: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="14" width="18" height="6" rx="2"/><path d="M7 17h.01M11 17h.01"/><path d="M8.5 11a5 5 0 0 1 7 0M6 8.5a8.5 8.5 0 0 1 12 0"/></svg>',
+  unknown: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 0 1 5 0c0 1.5-2 2-2 3.5"/><line x1="12" y1="16.5" x2="12" y2="16.5"/></svg>'
+};
+const SOURCE_LABEL = {
+  mdns:"name announced by the device (mDNS/Bonjour)", dns:"name from your router's DNS", netbios:"Windows computer name (NetBIOS)",
+  "this-pc":"this computer", gateway:"your router (default gateway)", "vendor-guess":"guessed from the MAC address manufacturer",
+  "private-mac":"phone/tablet using a private (randomized) MAC address", unknown:"no name or manufacturer could be found"
+};
+
+// Same-origin when opened from the scanner (http://localhost:8765); explicit URL if the file was opened directly.
+const API_BASE = location.protocol.startsWith("http") ? "" : "http://localhost:8765";
+let state = { filter:"all", search:"", sortKey:null, sortDir:1, devices:[], seenIds:new Set(), diagnostics:[], busy:false, hasData:false, pollTimer:null };
+
+function esc(s){ return String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+function fmtTime(ts){ return new Date(ts*1000).toLocaleString([], {hour:'2-digit', minute:'2-digit', month:'short', day:'numeric'}); }
+
+function setMode(mode, html, footnote){
+  document.getElementById("modeBanner").className = "mode-banner " + mode;
+  document.getElementById("modeText").innerHTML = html;
+  document.getElementById("footnoteText").innerHTML = footnote;
+}
+
+function applyData(data){
+  state.diagnostics = data.diagnostics || [];
+  renderDiagnostics();
+  if(!data.hasScanned){ return; }                       // first scan still running: keep waiting, show nothing fake
+  const first = !state.hasData;
+  state.devices = (data.devices || []).map(d => ({ ...d, new: !first && !state.seenIds.has(d.mac) }));
+  (data.devices || []).forEach(d => state.seenIds.add(d.mac));
+  state.hasData = true;
+  document.getElementById("netName").textContent = "Live · " + (data.subnet || "your network");
+  if(data.scannedAt) document.getElementById("scanTime").textContent = fmtTime(data.scannedAt);
+}
+
+async function loadFromServer(){
+  try{
+    const res = await fetch(API_BASE + "/api/devices", { signal: AbortSignal.timeout(10000), cache:"no-store" });
+    if(!res.ok) throw new Error("bad response");
+    const data = await res.json();
+    applyData(data);
+    if(!data.hasScanned){
+      setMode("", '<span class="spinner"></span>Scanning your network for the first time… (10–30 seconds)',
+        "The scanner is pinging every address on your network and reading your router's neighbor table. Results appear here automatically — nothing is made up while you wait.");
+      schedule(2000);
+    } else if(!data.localIpDetected){
+      setMode("error", "Scanner is running, but couldn't find your WiFi/LAN adapter",
+        "Open <b>Diagnostics</b> to see which adapters were found and why each was skipped. A VPN or unusual adapter name is the usual cause.");
+      schedule(15000);
+    } else {
+      setMode("live", data.scanning ? '<span class="spinner"></span>Live — refreshing…' : "Live — reading your real network",
+        "Auto-updates every 15 seconds. <b>Online</b> = answered a ping or is actively reachable. <b>Offline</b> = still in your computer's neighbor cache but silent just now (sleeping phones and firewalled PCs can show this).");
+      schedule(15000);
+    }
+  }catch(err){
+    setMode("error", "Can't reach the scanner" + (state.hasData ? " — showing the last real result" : ""),
+      "Make sure <code>python scanner.py</code> is running, then open <code>http://localhost:8765</code>. (No sample data is shown, so you never see fake devices.)");
+    schedule(5000);
+  }
+  render();
+}
+
+function schedule(ms){ clearTimeout(state.pollTimer); state.pollTimer = setTimeout(loadFromServer, ms); }
+
+async function rescanNow(){
+  if(state.busy) return;
+  state.busy = true;
+  const btn = document.getElementById("rescanBtn");
+  btn.classList.add("spinning"); btn.disabled = true;
+  setMode("", '<span class="spinner"></span>Scanning now…', "A full scan takes roughly 10–30 seconds.");
+  try{
+    const res = await fetch(API_BASE + "/api/rescan", { signal: AbortSignal.timeout(90000), cache:"no-store" });
+    applyData(await res.json());
+  }catch(e){ /* the normal poll below reports the problem */ }
+  state.busy = false; btn.classList.remove("spinning"); btn.disabled = false;
+  await loadFromServer();
+}
+
+function render(){
+  const listEl = document.getElementById("deviceList");
+  const emptyEl = document.getElementById("emptyState");
+
+  let rows = state.devices.filter(d => {
+    if(state.filter==="online" && d.status!=="online") return false;
+    if(state.filter==="offline" && d.status!=="offline") return false;
+    if(state.filter==="flagged" && !d.flagged) return false;
+    if(state.search){
+      const hay = (d.name+" "+d.hostId+" "+d.mac+" "+d.ip).toLowerCase();
+      if(!hay.includes(state.search.toLowerCase())) return false;
+    }
+    return true;
+  });
+
+  const ipNum = ip => ip.split(".").reduce((a,b)=>a*256+(+b),0);
+  if(state.sortKey){
+    rows = rows.slice().sort((a,b)=>{
+      const av = state.sortKey==="ip" ? ipNum(a.ip) : String(a[state.sortKey]||"").toLowerCase();
+      const bv = state.sortKey==="ip" ? ipNum(b.ip) : String(b[state.sortKey]||"").toLowerCase();
+      return av<bv ? -state.sortDir : av>bv ? state.sortDir : 0;
+    });
+  }
+
+  document.getElementById("statTotal").textContent = state.devices.length;
+  document.getElementById("statOnline").textContent = state.devices.filter(d=>d.status==="online").length;
+  document.getElementById("statNew").textContent = state.devices.filter(d=>d.new).length;
+  document.getElementById("statFlagged").textContent = state.devices.filter(d=>d.flagged).length;
+
+  if(rows.length===0){
+    listEl.innerHTML = "";
+    emptyEl.textContent = state.hasData ? "No devices match that filter." : "Waiting for the first scan…";
+    emptyEl.style.display = "block";
+    return;
+  }
+  emptyEl.style.display = "none";
+
+  listEl.innerHTML = rows.map(d => `
+    <div class="row">
+      <div class="dot ${d.status==='online'?'on':'off'}"></div>
+      <div class="who">
+        <div class="name" title="${esc(SOURCE_LABEL[d.nameSource] || '')}">
+          <span class="type-icon">${ICONS[d.type] || ICONS.unknown}</span>
+          <span>${esc(d.name)}</span>
+          ${d.isThisDevice ? '<span class="badge-you">This device</span>' : ''}
+          ${d.isGateway ? '<span class="badge-gw">Router</span>' : ''}
+          ${d.new ? '<span class="badge-new">New</span>' : ''}
+          ${d.flagged ? '<span class="badge-flag">Unrecognized</span>' : ''}
+          ${d.randomizedMac ? '<span class="badge-priv" title="This device uses a private (randomized) MAC address — common on iPhones, Android phones and Windows 11. It will not match the MAC printed in its settings.">Private MAC</span>' : ''}
+        </div>
+        <div class="hostid">${esc(d.hostId)}</div>
+      </div>
+      <div class="mono-field">${esc(d.mac)}</div>
+      <div class="mono-field ${d.status==='offline'?'dim':''}">${esc(d.ip)}</div>
+      <div class="status-text ${d.status==='offline'?'off':''}">${d.status==='online' ? 'Online' : 'No response'}</div>
+      <button class="copy-btn" data-copy="${esc(d.name)} | ${esc(d.hostId)} | ${esc(d.mac)} | ${esc(d.ip)}" aria-label="Copy device details" title="Copy device details">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+      </button>
+    </div>
+  `).join("");
+
+  listEl.querySelectorAll(".copy-btn").forEach(btn=>{
+    btn.addEventListener("click", async ()=>{
+      try{ await navigator.clipboard.writeText(btn.dataset.copy); btn.classList.add("copied"); setTimeout(()=>btn.classList.remove("copied"), 1200); }catch(e){}
+    });
+  });
+}
+
+function renderDiagnostics(){
+  const panel = document.getElementById("diagPanel");
+  panel.textContent = state.diagnostics.length ? state.diagnostics.join("\n") : "No diagnostics yet.";
+}
+
+document.getElementById("searchInput").addEventListener("input", e=>{ state.search = e.target.value.trim(); render(); });
+document.getElementById("filterChips").addEventListener("click", e=>{
+  const chip = e.target.closest(".chip"); if(!chip) return;
+  document.querySelectorAll(".chip").forEach(c=>c.classList.remove("active"));
+  chip.classList.add("active"); state.filter = chip.dataset.filter; render();
+});
+document.querySelectorAll(".sortable").forEach(el=>{
+  el.addEventListener("click", ()=>{
+    const key = el.dataset.sort;
+    if(state.sortKey===key){ state.sortDir *= -1; } else { state.sortKey = key; state.sortDir = 1; }
+    render();
+  });
+});
+document.getElementById("diagBtn").addEventListener("click", () => {
+  const panel = document.getElementById("diagPanel");
+  panel.style.display = panel.style.display === "none" ? "block" : "none";
+});
+document.getElementById("copyDebugBtn").addEventListener("click", async () => {
+  const btn = document.getElementById("copyDebugBtn");
+  try{
+    const txt = await (await fetch(API_BASE + "/api/debug", {cache:"no-store"})).text();
+    await navigator.clipboard.writeText(txt);
+    btn.textContent = "Copied ✓";
+  }catch(e){ btn.textContent = "Couldn't copy"; }
+  setTimeout(()=>btn.textContent = "Copy report", 1800);
+});
+document.getElementById("rescanBtn").addEventListener("click", rescanNow);
+
+loadFromServer();
+</script>
+</body>
+</html>
